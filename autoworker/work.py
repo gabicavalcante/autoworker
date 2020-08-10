@@ -20,7 +20,7 @@ def num_connected_workers(queue):
             ]
         )
 
-def worker(queue_name, redis_url, skip_failed, default_result_ttl):
+def auto_worker(queue_name, redis_url, skip_failed, default_result_ttl):
     """
     Internal target to use in multiprocessing
     """

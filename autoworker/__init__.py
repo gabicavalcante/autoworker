@@ -6,17 +6,17 @@ from uuid import uuid4
 
 from redis import Redis
 from redis import connection
+import redis
 from rq.defaults import DEFAULT_RESULT_TTL
-
+from rq.contrib.legacy import cleanup_ghosts
 from rq.queue import Queue
 from rq.worker import Worker, WorkerStatus
 from rq.utils import import_attribute
 from osconf import config_from_environment
-from autoworker.autoworker.work import worker, num_connected_workers
+from autoworker.autoworker.work import auto_worker, num_connected_workers
 
 # Number of maximum procs we can run
 MAX_PROCS = mp.cpu_count() + 1
-
 
 class AutoWorkerQueue(Queue):
     def __init__(
@@ -28,6 +28,16 @@ class AutoWorkerQueue(Queue):
         job_class=None,
         max_workers=None,
     ):
+        self.name = name
+
+        self.config = config_from_environment(
+            "AUTOWORKER",
+            ["redis_url"],
+            queue_class="rq.Queue",
+            worker_class="rq.Worker",
+            job_class="rq.Job",
+        )
+
         super(AutoWorkerQueue, self).__init__(
             name=name,
             default_timeout=default_timeout,
@@ -41,18 +51,19 @@ class AutoWorkerQueue(Queue):
 
     def enqueue(self, f, *args, **kwargs):
         res = super(AutoWorkerQueue, self).enqueue(f, *args, **kwargs)
-        self.run_autowker()
+        self.run_auto_worker()
         return res
 
     def enqueue_job(self, job, pipeline=None, at_front=False):
         res = super(AutoWorkerQueue, self).enqueue_job(job, pipeline, at_front)
-        self.run_autowker()
+        self.run_auto_worker()
         return res
 
-    def run_autowker(self):
-        if Worker.count(queue=self) <= self.max_workers: 
-            aw = AutoWorker(self.name, max_procs=1)
-            aw.work()
+    def run_auto_worker(self):
+        # if Worker.count(queue=self) <= self.max_workers: 
+        mp.Process(target=auto_worker, args=(self.name, self.config["redis_url"], True, DEFAULT_RESULT_TTL)).start()
+        # aw = AutoWorker(self.name, max_procs=1)
+        # aw.work()
 
     def run_job(self, job):
         return super(AutoWorkerQueue, self).run_job(job)
