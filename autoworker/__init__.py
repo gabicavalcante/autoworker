@@ -5,12 +5,14 @@ import multiprocessing as mp
 from uuid import uuid4
 
 from redis import Redis
+from redis import connection
 from rq.defaults import DEFAULT_RESULT_TTL
-from rq.contrib.legacy import cleanup_ghosts
+
 from rq.queue import Queue
 from rq.worker import Worker, WorkerStatus
 from rq.utils import import_attribute
 from osconf import config_from_environment
+from autoworker.autoworker.work import worker, num_connected_workers
 
 # Number of maximum procs we can run
 MAX_PROCS = mp.cpu_count() + 1
@@ -70,8 +72,9 @@ class AutoWorker(object):
         skip_failed=True,
         default_result_ttl=DEFAULT_RESULT_TTL
     ):
-        if queue is None:
-            queue = "default"
+        self.queue = "default"
+        if queue is not None:
+            self.queue = queue
 
         if max_procs is None:
             self.max_procs = MAX_PROCS
@@ -90,60 +93,13 @@ class AutoWorker(object):
         )
         self.skip_failed = skip_failed
         self.default_result_ttl = default_result_ttl
-        self.connection = Redis.from_url(self.config["redis_url"])
-        queue_class = import_attribute(self.config["queue_class"])
-        self.queue = queue_class(queue, connection=self.connection)
-
-    def num_connected_workers(self):
-        return len(
-            [
-                w
-                for w in Worker.all(queue=self.queue)
-                if w.state
-                in (
-                    WorkerStatus.STARTED,
-                    WorkerStatus.SUSPENDED,
-                    WorkerStatus.BUSY,
-                    WorkerStatus.IDLE,
-                )
-            ]
-        )
-
-    def worker(self):
-        """
-        Internal target to use in multiprocessing
-        """
-        cleanup_ghosts(self.connection)
-        worker_class = import_attribute(self.config["worker_class"])
-        if self.skip_failed:
-            exception_handlers = []
-        else:
-            exception_handlers = None
-
-        name = "{}-auto".format(uuid4().hex)
-        worker = worker_class(
-            [self.queue],
-            name=name,
-            connection=self.connection,
-            exception_handlers=exception_handlers,
-            default_result_ttl=self.default_result_ttl,
-        )
-        worker.work(burst=True)
-
-    def _create_worker(self):
-        child_pid = os.fork()
-        if child_pid == 0:
-            self.worker()
 
     def work(self):
         """
         Spawn the multiple workers using multiprocessing and `self.worker`_
         targget
         """
-        max_procs = self.max_procs - self.num_connected_workers()
+        max_procs = 1 # self.max_procs - num_connected_workers()
         self.processes = [
-            mp.Process(target=self._create_worker) for _ in range(0, max_procs)
-        ]
-        for proc in self.processes:
-            proc.daemon = False
-            proc.start()
+            mp.Process(target=worker, args=(self.queue, self.config["redis_url"], self.skip_failed, self.default_result_ttl)).start() for _ in range(0, max_procs)
+        ] 
