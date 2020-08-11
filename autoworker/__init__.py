@@ -12,7 +12,7 @@ from rq.queue import Queue
 from rq.worker import Worker, WorkerStatus
 from rq.utils import import_attribute
 from osconf import config_from_environment
-from autoworker.autoworker.work import worker, num_connected_workers
+from autoworker.work import worker, num_connected_workers
 
 # Number of maximum procs we can run
 MAX_PROCS = mp.cpu_count() + 1
@@ -85,7 +85,7 @@ class AutoWorker(object):
 
         self.processes = []
         self.config = config_from_environment(
-            "AUTOWORKER",
+            "AUTO_WORKER",
             ["redis_url"],
             queue_class="rq.Queue",
             worker_class="rq.Worker",
