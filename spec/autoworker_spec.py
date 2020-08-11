@@ -6,7 +6,7 @@ from expects import *
 from mamba import *
 
 # Setup environment variable
-os.environ['AUTOWORKER_REDIS_URL'] = 'redis://localhost:6379/0'
+os.environ['AUTO_WORKER_REDIS_URL'] = 'redis://localhost:6379/0'
 
 
 with description('The autoworker class'):

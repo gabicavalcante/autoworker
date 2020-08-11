@@ -13,7 +13,7 @@ from rq.queue import Queue
 from rq.worker import Worker, WorkerStatus
 from rq.utils import import_attribute
 from osconf import config_from_environment
-from autoworker.autoworker.work import auto_worker, num_connected_workers
+from autoworker.work import auto_worker, num_connected_workers
 
 # Number of maximum procs we can run
 MAX_PROCS = mp.cpu_count() + 1
@@ -31,7 +31,7 @@ class AutoWorkerQueue(Queue):
         self.name = name
 
         self.config = config_from_environment(
-            "AUTOWORKER",
+            "AUTO_WORKER",
             ["redis_url"],
             queue_class="rq.Queue",
             worker_class="rq.Worker",
@@ -61,9 +61,9 @@ class AutoWorkerQueue(Queue):
 
     def run_auto_worker(self):
         # if Worker.count(queue=self) <= self.max_workers: 
-        mp.Process(target=auto_worker, args=(self.name, self.config["redis_url"], True, DEFAULT_RESULT_TTL)).start()
-        # aw = AutoWorker(self.name, max_procs=1)
-        # aw.work()
+        # mp.Process(target=auto_worker, args=(self.name, self.config["redis_url"], True, DEFAULT_RESULT_TTL)).start()
+        aw = AutoWorker(self.name, max_procs=1)
+        aw.work()
 
     def run_job(self, job):
         return super(AutoWorkerQueue, self).run_job(job)
@@ -78,14 +78,12 @@ class AutoWorker(object):
 
     def __init__(
         self,
-        queue=None,
+        queue_name="default",
         max_procs=None,
         skip_failed=True,
         default_result_ttl=DEFAULT_RESULT_TTL
     ):
-        self.queue = "default"
-        if queue is not None:
-            self.queue = queue
+        self.queue_name = queue_name
 
         if max_procs is None:
             self.max_procs = MAX_PROCS
@@ -96,7 +94,7 @@ class AutoWorker(object):
 
         self.processes = []
         self.config = config_from_environment(
-            "AUTOWORKER",
+            "AUTO_WORKER",
             ["redis_url"],
             queue_class="rq.Queue",
             worker_class="rq.Worker",
@@ -105,12 +103,33 @@ class AutoWorker(object):
         self.skip_failed = skip_failed
         self.default_result_ttl = default_result_ttl
 
+        connection = Redis.from_url(self.config["redis_url"])
+    
+        queue_class = import_attribute("rq.Queue")
+        self.queue = queue_class(queue_name, connection=connection)
+
+    def num_connected_workers(self):
+        return len(
+            [
+                w
+                for w in Worker.all(queue=self.queue)
+                if w.state
+                in (
+                    WorkerStatus.STARTED,
+                    WorkerStatus.SUSPENDED,
+                    WorkerStatus.BUSY,
+                    WorkerStatus.IDLE,
+                )
+            ]
+        )
+
     def work(self):
         """
         Spawn the multiple workers using multiprocessing and `self.worker`_
         targget
         """
-        max_procs = 1 # self.max_procs - num_connected_workers()
+        max_procs = self.max_procs - self.num_connected_workers()
+        # mp.Process(target=auto_worker, args=(self.queue, self.config["redis_url"], True, DEFAULT_RESULT_TTL)).start()
         self.processes = [
-            mp.Process(target=worker, args=(self.queue, self.config["redis_url"], self.skip_failed, self.default_result_ttl)).start() for _ in range(0, max_procs)
+            mp.Process(target=auto_worker, args=(self.queue_name, self.config["redis_url"], True, DEFAULT_RESULT_TTL)).start() for _ in range(0, max_procs)
         ] 
