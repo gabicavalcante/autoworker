@@ -9,8 +9,8 @@ install:
   - pip install .
   - pip install coveralls
   - pip install -r requirements-dev.txt
-# script:
-# - mamba --enable-coverage
+script:
+  - mamba --enable-coverage
 # after_success:
 # - coverage combine
 # - coverage report

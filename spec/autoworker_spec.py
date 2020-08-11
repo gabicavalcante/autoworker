@@ -1,5 +1,5 @@
 import os
-from autoworker import AutoWorker
+from autoworker import AutoWorker, AutoWorkerQueue
 from rq.queue import Queue
 
 from expects import *
@@ -14,31 +14,31 @@ with description('The autoworker class'):
         with it('must be the same as number of cpus + 1'):
             import multiprocessing as mp
 
-            a = AutoWorker()
-            expect(a.max_procs).to(equal(mp.cpu_count() + 1))
+            aw = AutoWorker()
+            expect(aw.max_procs).to(equal(mp.cpu_count() + 1))
 
     with context('if max_procs is passed to __init__'):
         with it('must be the the same value'):
-            a = AutoWorker(max_procs=3)
-            expect(a.max_procs).to(equal(3))
+            aw = AutoWorker(max_procs=3)
+            expect(aw.max_procs).to(equal(3))
 
         with it('must raise an error if is 0 < max_procs < number of cpus + 1'):
             def callback():
                 import multiprocessing as mp
-                a = AutoWorker(max_procs=mp.cpu_count() + 2)
+                aw = AutoWorker(max_procs=mp.cpu_count() + 2)
 
             expect(callback).to(raise_error(ValueError))
 
     with context('if no queue is defined'):
         with it('must be "default" queue'):
-            a = AutoWorker()
-            q = Queue('default', connection=a.connection)
-            expect(a.queue).to(equal(q))
+            aw = AutoWorker()
+            q = Queue('default', connection=aw.connection)
+            expect(aw.queue).to(equal(q))
     with context('if a queue is defined'):
         with it('have to be the same value'):
-            a = AutoWorker('low')
-            q = Queue('low', connection=a.connection)
-            expect(a.queue).to(equal(q))
+            aw = AutoWorker('low')
+            q = Queue('low', connection=aw.connection)
+            expect(aw.queue).to(equal(q))
 
 
 with description('An instance of a AutoWorker'):
