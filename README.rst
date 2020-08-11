@@ -4,6 +4,8 @@ AutoWorker
 .. image:: https://travis-ci.org/gisce/autoworker.svg?branch=master
     :target: https://travis-ci.org/gisce/autoworker
 
+This project work based on the original autoworker. 
+
 Spawn RQ Workers automatically
 
 .. code-block:: python
