@@ -134,7 +134,7 @@ class AutoWorker(object):
                 target=auto_worker,
                 args=(
                     self.queue_name,
-                    self.connection,
+                    self.config["redis_url"],
                     self.skip_failed,
                     self.default_result_ttl,
                 ),

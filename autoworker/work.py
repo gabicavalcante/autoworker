@@ -6,10 +6,12 @@ from redis import Redis
 from rq.worker import Worker, WorkerStatus
 
 
-def auto_worker(queue_name, connection, skip_failed, default_result_ttl):
+def auto_worker(queue_name, redis_url, skip_failed, default_result_ttl):
     """
     Internal target to use in multiprocessing
-    """ 
+    """
+    connection = Redis.from_url(redis_url)
+
     cleanup_ghosts(connection)
     worker_class = import_attribute("rq.Worker")
 
