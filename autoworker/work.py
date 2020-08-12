@@ -6,22 +6,6 @@ from redis import Redis
 from rq.worker import Worker, WorkerStatus
 
 
-def num_connected_workers(queue):
-    return len(
-        [
-            w
-            for w in Worker.all(queue=queue)
-            if w.state
-            in (
-                WorkerStatus.STARTED,
-                WorkerStatus.SUSPENDED,
-                WorkerStatus.BUSY,
-                WorkerStatus.IDLE,
-            )
-        ]
-    )
-
-
 def auto_worker(queue_name, redis_url, skip_failed, default_result_ttl):
     """
     Internal target to use in multiprocessing

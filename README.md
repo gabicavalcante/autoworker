@@ -3,7 +3,7 @@ AutoWorker
 
 [![Build Status](https://travis-ci.org/gabicavalcante/autoworker.svg?branch=master)](https://travis-ci.org/gabicavalcante/autoworker)
 
-Spawn RQ Workers automatically. This project work based on the original autoworker. 
+Spawn RQ Workers automatically. This project work based on the original [autoworker](https://github.com/gisce/autoworker). 
 
 ```python
 from redis import Redis

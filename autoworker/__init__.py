@@ -13,7 +13,7 @@ from rq.queue import Queue
 from rq.worker import Worker, WorkerStatus
 from rq.utils import import_attribute
 from osconf import config_from_environment
-from autoworker.work import auto_worker, num_connected_workers
+# from autoworker.work import auto_worker
 
 # Number of maximum procs we can run
 MAX_PROCS = mp.cpu_count() + 1
@@ -123,6 +123,33 @@ class AutoWorker(object):
             ]
         )
 
+    def auto_worker(self, skip_failed, default_result_ttl):
+        """
+        Internal target to use in multiprocessing
+        """
+        # connection = Redis.from_url(redis_url)
+
+        cleanup_ghosts(self.connection)
+        worker_class = import_attribute(self.config["worker_class"])
+
+        # queue_class = import_attribute("rq.Queue")
+        # queue = queue_class(queue_name, connection=connection)
+
+        if skip_failed:
+            exception_handlers = []
+        else:
+            exception_handlers = None
+
+        name = "{}-auto".format(uuid4().hex)
+        worker = worker_class(
+            self.queue,
+            name=name,
+            connection=self.connection,
+            exception_handlers=exception_handlers,
+            default_result_ttl=default_result_ttl,
+        )
+        worker.work(burst=True)
+
     def work(self):
         """
         Spawn the multiple workers using multiprocessing and `self.worker`_
@@ -131,12 +158,10 @@ class AutoWorker(object):
         max_procs = self.max_procs - self.num_connected_workers()
         self.processes = [
             mp.Process(
-                target=auto_worker,
-                args=(
-                    self.queue_name,
-                    self.config["redis_url"],
-                    True,
-                    DEFAULT_RESULT_TTL,
+                target=self.auto_worker,
+                args=(  
+                    self.skip_failed,
+                    self.default_result_ttl,
                 ),
             ).start()
             for _ in range(0, max_procs)
