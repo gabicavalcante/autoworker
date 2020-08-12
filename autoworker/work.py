@@ -3,7 +3,6 @@ from uuid import uuid4
 from rq.contrib.legacy import cleanup_ghosts
 from rq.utils import import_attribute
 from redis import Redis
-from rq.worker import Worker, WorkerStatus
 
 
 def auto_worker(queue_name, redis_url, skip_failed, default_result_ttl):

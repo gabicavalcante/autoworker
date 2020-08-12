@@ -1,14 +1,10 @@
 # coding: utf-8
 from __future__ import unicode_literals
-import os
 import multiprocessing as mp
-from uuid import uuid4
 
 from redis import Redis
-from redis import connection
-import redis
+
 from rq.defaults import DEFAULT_RESULT_TTL
-from rq.contrib.legacy import cleanup_ghosts
 from rq.queue import Queue
 from rq.worker import Worker, WorkerStatus
 from rq.utils import import_attribute
@@ -28,6 +24,7 @@ class AutoWorkerQueue(Queue):
         is_async=True,
         job_class=None,
         max_workers=None,
+        serializer=None,
     ):
         self.name = name
 
@@ -45,6 +42,7 @@ class AutoWorkerQueue(Queue):
             connection=connection,
             is_async=is_async,
             job_class=job_class,
+            serializer=serializer,
         )
         if max_workers is None:
             max_workers = MAX_PROCS
@@ -82,7 +80,7 @@ class AutoWorker(object):
         max_procs=None,
         skip_failed=True,
         default_result_ttl=DEFAULT_RESULT_TTL,
-    ): 
+    ):
         self.queue_name = queue_name
 
         if max_procs is None:

@@ -5,6 +5,8 @@ AutoWorker
 
 Spawn RQ Workers automatically. This project work based on the original [autoworker](https://github.com/gisce/autoworker). 
 
+
+
 ```python
 from redis import Redis
 from rq import Queue
